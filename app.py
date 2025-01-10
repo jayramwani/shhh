@@ -107,17 +107,19 @@ def send_otp(email, otp):
         logger.error(f"Failed to send OTP: {str(e)}")
         logger.error("Check your email configuration and credentials.")
 
-@app.route('/api/verifyOtp', methods=[' POST'])
+@app.route('/api/verifyOtp', methods=['POST'])
 def verify_otp():
     data = request.get_json()
     email = data.get('email')
     otp = data.get('otp')
 
+
     logger.debug(f"Received OTP for {email}: {otp}")
-    logger.debug(f"Stored OTP for {email}: {otp_storage.get(email)}")
+    stored_otp = otp_storage.get(email)
+    logger.debug(f"Stored OTP for {email}: {stored_otp}")
 
     # Verify the OTP
-    if email in otp_storage and otp_storage[email] == int(otp):
+    if email in otp_storage and stored_otp == int(otp):
         del otp_storage[email]  # Remove OTP after verification
         logger.info(f"OTP verified successfully for {email}")
         return jsonify(success=True, message='OTP verified successfully', verified=True)
