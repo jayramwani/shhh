@@ -7,6 +7,8 @@ import logging
 import os
 import requests  # Import requests to send HTTP requests
 
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 # Set up logging to send logs to a remote logging server
 class HTTPLogger(logging.Handler):
     def emit(self, record):
