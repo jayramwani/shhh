@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_mail import Mail, Message
 from flask_cors import CORS
-import random
+import secrets  # Use secrets for secure random generation
 import sqlite3
 import logging
 import os
 import requests  # Import requests to send HTTP requests
+import time  # Import time for managing expiration
 
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
@@ -45,6 +46,9 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 http_handler.setFormatter(formatter)
 logger.addHandler(http_handler)
 
+# Define the expiration time for PINs
+PIN_EXPIRATION_TIME = 303  # 5 minutes and 3 seconds in seconds
+
 def create_connection():
     conn = sqlite3.connect('users.db')
     return conn
@@ -67,7 +71,7 @@ def login():
     conn.close()
 
     if user:
-        otp = random.randint(100000, 999999)  # Generate a 6-digit OTP
+        otp = secrets.randbelow(1000000)  # Generate a secure 6-digit OTP
         otp_storage[email] = otp  # Store OTP in memory
         send_otp(email, otp)  # Send OTP to the user's email
         logger.info(f"OTP sent to {email}.")
@@ -85,8 +89,8 @@ def request_otp():
         logger.error("Email is required for OTP request.")
         return jsonify(success=False, message='Email is required'), 400
 
-    # Generate a 6-digit OTP
-    otp = random.randint(100000, 999999)
+    # Generate a secure 6-digit OTP
+    otp = secrets.randbelow(1000000)
     otp_storage[email] = otp  # Store OTP in memory
     send_otp(email, otp)  # Send OTP to the user's email
     logger.info(f"OTP sent to {email}.")
@@ -103,7 +107,7 @@ def send_otp(email, otp):
         logger.error(f"Failed to send OTP: {str(e)}")
         logger.error("Check your email configuration and credentials.")
 
-@app.route('/api/verifyOtp', methods=['POST'])
+@app.route('/api/verifyOtp', methods=[' POST'])
 def verify_otp():
     data = request.get_json()
     email = data.get('email')
@@ -126,15 +130,15 @@ def send_pin():
     data = request.get_json()
     logger.debug(f"Received data: {data}")  # Log the incoming data
     email = data.get('email')
-    pin = data.get('pin')
+    pin = secrets.randbelow(1000000)  # Generate a secure 6-digit PIN
 
-    if not email or not pin:
-        logger.error("Email and PIN are required.")
-        return jsonify(success=False, message='Email and PIN are required'), 400
+    if not email:
+        logger.error("Email is required.")
+        return jsonify(success=False, message='Email is required'), 400
 
-    # Store the PIN in memory
-    pin_storage[email] = pin  # Store PIN in memory
-    logger.info(f"Received PIN {pin} for {email}")
+    # Store the PIN in memory with expiration
+    pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
+    logger.info(f"Generated PIN {pin} for {email}")
 
     # Send the PIN to NodeMCU ESP32
     esp32_url = "http://<192.168.1.100>/receivePin"  # Replace with your ESP32's IP address
@@ -149,10 +153,14 @@ def send_pin():
 
     return jsonify(success=True, message='PIN received successfully')
 
-def expire_pin(email):
-    if email in pin_storage:
-        del pin_storage[email]  # Remove PIN after expiration
-        logger.info(f"PIN for {email} has expired and has been removed.")
+def expire_pins():
+    current_time = time.time()
+    for email in list(pin_storage.keys()):
+        if current_time - pin_storage[email]['timestamp'] > PIN_EXPIRATION_TIME:
+            del pin_storage[email]  # Remove PIN after expiration
+            logger.info(f"PIN for {email} has expired and has been removed.")
+
+# Call expire_pins periodically (you can implement a scheduler or a background thread for this)
 
 if __name__ == '__main__':
     app.run(debug=True)
