@@ -6,6 +6,7 @@ import sqlite3
 import logging
 import os
 import requests
+import gunicorn
 
 # Set up logging
 class HTTPLogger(logging.Handler):
