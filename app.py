@@ -62,6 +62,13 @@ def home():
     logger.info("Home route accessed.")
     return "Welcome to the Login API! Use /api/login to log in, /api/requestOtp to request an OTP, and /api/sendPin to generate a PIN."
 
+@app.route('/api/getEmail', methods=['GET'])
+def get_email():
+    # Here you can implement logic to fetch the email address
+    # For demonstration, we will return a hardcoded email
+    email = "jay.ramwani1983@gmail.com"  # Replace with logic to fetch the actual email
+    return jsonify(success=True, email=email)
+
 @app.route('/api/login', methods=['POST'])
 def login():
     logger.info("Login request received.")
@@ -85,7 +92,7 @@ def login():
         logger.info(f"OTP sent to {email}.")
         return jsonify(success=True, message='OTP sent to your email')
     else:
-        logger.warning(f"Invalid login attempt for email: {email}")
+        logger.warning (f"Invalid login attempt for email: {email}")
         return jsonify(success=False, message='Invalid email or password'), 401
 
 @app.route('/api/requestOtp', methods=['POST'])
@@ -108,7 +115,7 @@ def request_otp():
 def send_otp(email, otp):
     logger.debug(f"Sending OTP {otp} to {email}")
     msg = Message('Your OTP Code', recipients=[email])
-    msg.body = f'Your OTP code is { otp}'
+    msg.body = f'Your OTP code is {otp}'
     try:
         mail.send(msg)
         logger.info(f"OTP sent successfully to {email}")
