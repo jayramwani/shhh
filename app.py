@@ -22,7 +22,9 @@ class HTTPLogger(logging.Handler):
 
 # Initialize the Flask application
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Enable CORS for all routes
+CORS(app, supports_credentials=True)  # Allow all origins
 
 # Configure Flask-Mail using environment variables
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -96,7 +98,7 @@ def request_otp():
         logger.error("Email is required for OTP request.")
         return jsonify(success=False, message='Email is required'), 400
 
-    # Generate a secure  6-digit OTP
+    # Generate a secure 6-digit OTP
     otp = secrets.randbelow(1000000)
     otp_storage[email] = otp  # Store OTP in memory
     send_otp(email, otp)  # Send OTP to the user's email
@@ -106,7 +108,7 @@ def request_otp():
 def send_otp(email, otp):
     logger.debug(f"Sending OTP {otp} to {email}")
     msg = Message('Your OTP Code', recipients=[email])
-    msg.body = f'Your OTP code is {otp}'
+    msg.body = f'Your OTP code is { otp}'
     try:
         mail.send(msg)
         logger.info(f"OTP sent successfully to {email}")
