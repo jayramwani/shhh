@@ -96,7 +96,7 @@ def request_otp():
         logger.error("Email is required for OTP request.")
         return jsonify(success=False, message='Email is required'), 400
 
-    # Generate a secure 6-digit OTP
+    # Generate a secure  6-digit OTP
     otp = secrets.randbelow(1000000)
     otp_storage[email] = otp  # Store OTP in memory
     send_otp(email, otp)  # Send OTP to the user's email
@@ -151,7 +151,6 @@ def send_pin():
     logger.info(f"Generated PIN {pin} for {email}")
 
     return jsonify(success=True, message='PIN generated successfully', pin=pin)
-
 
 def expire_pins():
     logger.debug("Checking for expired PINs.")
