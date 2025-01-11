@@ -75,7 +75,7 @@ def login():
         otp = secrets.randbelow(1000000)  # Generate a secure 6-digit OTP
         otp_storage[email] = otp  # Store OTP in memory
         send_otp(email, otp)  # Send OTP to the user's email
-        logger.info(f"OTP sent to {email}: {otp}")  # Log the OTP sent
+        logger.info(f"OTP sent to {email}.")
         return jsonify(success=True, message='OTP sent to your email')
     else:
         logger.warning(f"Invalid login attempt for email: {email}")
@@ -94,7 +94,7 @@ def request_otp():
     otp = secrets.randbelow(1000000)
     otp_storage[email] = otp  # Store OTP in memory
     send_otp(email, otp)  # Send OTP to the user's email
-    logger.info(f"OTP sent to {email}: {otp}")  # Log the OTP sent
+    logger.info(f"OTP sent to {email}.")
     return jsonify(success=True, message='OTP sent to your email')
 
 def send_otp(email, otp):
@@ -114,43 +114,56 @@ def verify_otp():
     email = data.get('email')
     otp = data.get('otp')
 
-    # Log the incoming OTP for debugging
-    logger.debug(f"Verifying OTP for {email}. Incoming OTP: {otp}")
-
-    # Ensure the OTP is compared as an integer
+    logger.debug(f"Received OTP for {email}: {otp}")
     stored_otp = otp_storage.get(email)
-    if stored_otp is not None:
-        logger.debug(f"Stored OTP for {email}: {stored_otp}")
-        if stored_otp == int(otp):
-            del otp_storage[email]  # Remove OTP after verification
-            logger.info(f"OTP verified for {email}.")
-            return jsonify(success=True, message='OTP verified successfully')
-        else:
-            logger.warning(f"Invalid OTP attempt for {email}. Expected: {stored_otp}, Received: {otp}")
-            return jsonify(success=False, message='Invalid OTP'), 401
-    else:
-        logger.warning(f"No OTP found for {email}.")
-        return jsonify(success=False, message='No OTP found for this email'), 404
+    logger.debug(f"Stored OTP for {email}: {stored_otp}")
 
-@app.route('/api/sendIp', methods=['POST'])
+    # Verify the OTP
+    if email in otp_storage and stored_otp == int(otp):
+        del otp_storage[email]  # Remove OTP after verification
+        logger.info(f"OTP verified successfully for {email}")
+        return jsonify(success=True, message='OTP verified successfully', verified=True)
+    else:
+        logger.warning(f"Invalid OTP attempt for {email}: {otp}")
+        return jsonify(success=False, message='Invalid OTP', verified=False), 400
+
+@app.route('/api/sendPin', methods=['POST'])
+def send_pin():
+    data = request.get_json()
+    logger.debug(f"Received data: {data}")  # Log the incoming data
+    email = data.get('email')
+    pin = secrets.randbelow(10000)  # Generate a secure 4-digit PIN
+
+    if not email:
+        logger.error("Email is required.")
+        return jsonify(success=False, message='Email is required'), 400
+
+    # Store the PIN in memory with expiration
+    pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
+    logger.info(f"Generated PIN {pin} for {email}")
+
+    return jsonify(success=True, message='PIN generated successfully', pin=pin)
+
+@app.route('/api/sendIp', methods=['POST'])  # New route to receive IP address
 def send_ip():
     data = request.get_json()
     ip_address = data.get('ip')
 
-    if ip_address:
-        esp32_ip_storage[ip_address] = time.time()  # Store the IP address with a timestamp
-        logger.info(f"Received IP address from ESP32: {ip_address}")
-        return jsonify(success=True, message='IP address received')
-    else:
+    if not ip_address:
         logger.error("IP address is required.")
         return jsonify(success=False, message='IP address is required'), 400
 
-@app.route('/api/sendPin', methods=['POST'])
-def send_pin():
-    # Generate a new PIN
-    pin = secrets.randbelow(10000)  # Generate a secure 4-digit PIN
-    logger.info(f"Generated PIN: {pin}")
-    return jsonify(pin=str(pin))  # Return the PIN as a JSON response
+    logger.info(f"Received IP address from ESP32: {ip_address}")
+    return jsonify(success=True, message='IP address received successfully')
+
+def expire_pins():
+    current_time = time.time()
+    for email in list(pin_storage.keys()):
+        if current_time - pin_storage[email]['timestamp'] > PIN_EXPIRATION_TIME:
+            del pin_storage[email]  # Remove PIN after expiration
+            logger.info(f"PIN for {email} has expired and has been removed.")
+
+# Call expire_pins periodically (you can implement a scheduler or a background thread for this)
 
 if __name__ == '__main__':
     app.run(debug=True)
