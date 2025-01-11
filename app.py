@@ -109,7 +109,7 @@ def send_otp(email, otp):
     msg.body = f'Your OTP code is {otp}'
     try:
         mail.send(msg)
-        logger .info(f"OTP sent successfully to {email}")
+        logger.info(f"OTP sent successfully to {email}")
     except Exception as e:
         logger.error(f"Failed to send OTP: {str(e)}")
         logger.error("Check your email configuration and credentials.")
