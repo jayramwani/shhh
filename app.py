@@ -75,7 +75,7 @@ def login():
         otp = secrets.randbelow(1000000)  # Generate a secure 6-digit OTP
         otp_storage[email] = otp  # Store OTP in memory
         send_otp(email, otp)  # Send OTP to the user's email
-        logger.info(f"OTP sent to {email}.")
+        logger.info(f"OTP sent to {email}: {otp}")  # Log the OTP sent
         return jsonify(success=True, message='OTP sent to your email')
     else:
         logger.warning(f"Invalid login attempt for email: {email}")
@@ -94,12 +94,12 @@ def request_otp():
     otp = secrets.randbelow(1000000)
     otp_storage[email] = otp  # Store OTP in memory
     send_otp(email, otp)  # Send OTP to the user's email
-    logger.info(f"OTP sent to {email}.")
+    logger.info(f"OTP sent to {email}: {otp}")  # Log the OTP sent
     return jsonify(success=True, message='OTP sent to your email')
 
 def send_otp(email, otp):
     logger.debug(f"Sending OTP {otp} to {email}")
-    msg = Message ('Your OTP Code', recipients=[email])
+    msg = Message('Your OTP Code', recipients=[email])
     msg.body = f'Your OTP code is {otp}'
     try:
         mail.send(msg)
@@ -114,15 +114,23 @@ def verify_otp():
     email = data.get('email')
     otp = data.get('otp')
 
+    # Log the incoming OTP for debugging
+    logger.debug(f"Verifying OTP for {email}. Incoming OTP: {otp}")
+
     # Ensure the OTP is compared as an integer
     stored_otp = otp_storage.get(email)
-    if stored_otp is not None and stored_otp == int(otp):
-        del otp_storage[email]  # Remove OTP after verification
-        logger.info(f"OTP verified for {email}.")
-        return jsonify(success=True, message='OTP verified successfully')
+    if stored_otp is not None:
+        logger.debug(f"Stored OTP for {email}: {stored_otp}")
+        if stored_otp == int(otp):
+            del otp_storage[email]  # Remove OTP after verification
+            logger.info(f"OTP verified for {email}.")
+            return jsonify(success=True, message='OTP verified successfully')
+        else:
+            logger.warning(f"Invalid OTP attempt for {email}. Expected: {stored_otp}, Received: {otp}")
+            return jsonify(success=False, message='Invalid OTP'), 401
     else:
-        logger.warning(f"Invalid OTP attempt for {email}. Expected: {stored_otp}, Received: {otp}")
-        return jsonify(success=False, message='Invalid OTP'), 401
+        logger.warning(f"No OTP found for {email}.")
+        return jsonify(success=False, message='No OTP found for this email'), 404
 
 @app.route('/api/sendIp', methods=['POST'])
 def send_ip():
