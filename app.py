@@ -99,7 +99,7 @@ def request_otp():
 
 def send_otp(email, otp):
     logger.debug(f"Sending OTP {otp} to {email}")
-    msg = Message('Your OTP Code', recipients=[email])
+    msg = Message ('Your OTP Code', recipients=[email])
     msg.body = f'Your OTP code is {otp}'
     try:
         mail.send(msg)
@@ -110,16 +110,18 @@ def send_otp(email, otp):
 
 @app.route('/api/verifyOtp', methods=['POST'])
 def verify_otp():
-    data  = request.get_json()
+    data = request.get_json()
     email = data.get('email')
     otp = data.get('otp')
 
-    if otp_storage.get(email) == otp:
+    # Ensure the OTP is compared as an integer
+    stored_otp = otp_storage.get(email)
+    if stored_otp is not None and stored_otp == int(otp):
         del otp_storage[email]  # Remove OTP after verification
         logger.info(f"OTP verified for {email}.")
         return jsonify(success=True, message='OTP verified successfully')
     else:
-        logger.warning(f"Invalid OTP attempt for {email}.")
+        logger.warning(f"Invalid OTP attempt for {email}. Expected: {stored_otp}, Received: {otp}")
         return jsonify(success=False, message='Invalid OTP'), 401
 
 @app.route('/api/sendIp', methods=['POST'])
