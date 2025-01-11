@@ -51,19 +51,24 @@ logger.addHandler(http_handler)
 PIN_EXPIRATION_TIME = 303  # 5 minutes and 3 seconds in seconds
 
 def create_connection():
+    logger.debug("Creating a new database connection.")
     conn = sqlite3.connect('users.db')
     return conn
 
 @app.route('/')  # Route for the root URL
 def home():
+    logger.info("Home route accessed.")
     return "Welcome to the Login API! Use /api/login to log in, /api/requestOtp to request an OTP, and /api/sendPin to generate a PIN."
 
 @app.route('/api/login', methods=['POST'])
 def login():
+    logger.info("Login request received.")
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
 
+    logger.debug(f"Attempting to log in with email: {email}")
+    
     # Validate the email and password against the database
     conn = create_connection()
     cursor = conn.cursor()
@@ -83,6 +88,7 @@ def login():
 
 @app.route('/api/requestOtp', methods=['POST'])
 def request_otp():
+    logger.info("Request OTP received.")
     data = request.get_json()
     email = data.get('email')
 
@@ -103,13 +109,14 @@ def send_otp(email, otp):
     msg.body = f'Your OTP code is {otp}'
     try:
         mail.send(msg)
-        logger.info(f"OTP sent successfully to {email}")
+        logger .info(f"OTP sent successfully to {email}")
     except Exception as e:
         logger.error(f"Failed to send OTP: {str(e)}")
         logger.error("Check your email configuration and credentials.")
 
 @app.route('/api/verifyOtp', methods=['POST'])
 def verify_otp():
+    logger.info("Verify OTP request received.")
     data = request.get_json()
     email = data.get('email')
     otp = data.get('otp')
@@ -129,6 +136,7 @@ def verify_otp():
 
 @app.route('/api/sendPin', methods=['POST'])
 def send_pin():
+    logger.info("Send PIN request received.")
     data = request.get_json()
     logger.debug(f"Received data: {data}")  # Log the incoming data
     email = data.get('email')
@@ -146,6 +154,7 @@ def send_pin():
 
 @app.route('/api/sendIp', methods=['POST'])  # New route to receive IP address
 def send_ip():
+    logger.info("Send IP request received.")
     data = request.get_json()
     ip_address = data.get('ip')
 
@@ -157,6 +166,7 @@ def send_ip():
     return jsonify(success=True, message='IP address received successfully')
 
 def expire_pins():
+    logger.debug("Checking for expired PINs.")
     current_time = time.time()
     for email in list(pin_storage.keys()):
         if current_time - pin_storage[email]['timestamp'] > PIN_EXPIRATION_TIME:
@@ -166,6 +176,7 @@ def expire_pins():
 # Call expire_pins periodically (you can implement a scheduler or a background thread for this)
 
 if __name__ == '__main__':
+    logger.info("Starting the Flask application.")
     app.run(debug=True)
 
 
