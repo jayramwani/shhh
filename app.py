@@ -102,7 +102,7 @@ def send_otp(email, otp):
     msg = Message('Your OTP Code', recipients=[email])
     msg.body = f'Your OTP code is {otp}'
     try:
-        mail.send (msg)
+        mail.send(msg)
         logger.info(f"OTP sent successfully to {email}")
     except Exception as e:
         logger.error(f"Failed to send OTP: {str(e)}")
@@ -110,73 +110,37 @@ def send_otp(email, otp):
 
 @app.route('/api/verifyOtp', methods=['POST'])
 def verify_otp():
-    data = request.get_json()
+    data  = request.get_json()
     email = data.get('email')
     otp = data.get('otp')
 
-    logger.debug(f"Received OTP for {email}: {otp}")
-    stored_otp = otp_storage.get(email)
-    logger.debug(f"Stored OTP for {email}: {stored_otp}")
-
-    # Verify the OTP
-    if email in otp_storage and stored_otp == int(otp):
+    if otp_storage.get(email) == otp:
         del otp_storage[email]  # Remove OTP after verification
-        logger.info(f"OTP verified successfully for {email}")
-        return jsonify(success=True, message='OTP verified successfully', verified=True)
+        logger.info(f"OTP verified for {email}.")
+        return jsonify(success=True, message='OTP verified successfully')
     else:
-        logger.warning(f"Invalid OTP attempt for {email}: {otp}")
-        return jsonify(success=False, message='Invalid OTP', verified=False), 400
+        logger.warning(f"Invalid OTP attempt for {email}.")
+        return jsonify(success=False, message='Invalid OTP'), 401
 
-@app.route('/api/sendPin', methods=['POST'])
-def send_pin():
-    data = request.get_json()
-    logger.debug(f"Received data: {data}")  # Log the incoming data
-    email = data.get('email')
-    pin = secrets.randbelow(1000000)  # Generate a secure 6-digit PIN
-
-    if not email:
-        logger.error("Email is required.")
-        return jsonify(success=False, message='Email is required'), 400
-
-    # Store the PIN in memory with expiration
-    pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
-    logger.info(f"Generated PIN {pin} for {email}")
-
-    # Send the PIN to NodeMCU ESP32
-    esp32_url = esp32_ip_storage.get(email, "http://<default_ip>/receivePin")  # Use stored IP or default
-    try:
-        response = requests.post(esp32_url, json={'email': email, 'pin': pin})
-        if response.status_code == 200:
-            logger.info(f"PIN {pin} sent to ESP32 successfully.")
-        else:
-            logger.error(f"Failed to send PIN to ESP32: {response.text}")
-    except Exception as e:
-        logger.error(f"Error sending PIN to ESP32: {str(e)}")
-
-    return jsonify(success=True, message='PIN received successfully')
-
-@app.route('/api/sendIp', methods=['POST'])  # New route to receive IP address
+@app.route('/api/sendIp', methods=['POST'])
 def send_ip():
     data = request.get_json()
     ip_address = data.get('ip')
 
-    if not ip_address:
+    if ip_address:
+        esp32_ip_storage[ip_address] = time.time()  # Store the IP address with a timestamp
+        logger.info(f"Received IP address from ESP32: {ip_address}")
+        return jsonify(success=True, message='IP address received')
+    else:
         logger.error("IP address is required.")
         return jsonify(success=False, message='IP address is required'), 400
 
-    # Store the IP address in memory
-    esp32_ip_storage[data.get('email')] = ip_address  # Store IP by email
-    logger.info(f"Received IP address from ESP32: {ip_address}")
-    return jsonify(success=True, message='IP address received successfully')
-
-def expire_pins():
-    current_time = time.time()
-    for email in list(pin_storage.keys()):
-        if current_time - pin_storage[email]['timestamp'] > PIN_EXPIRATION_TIME:
-            del pin_storage[email]  # Remove PIN after expiration
-            logger.info(f"PIN for {email} has expired and has been removed.")
-
-# Call expire_pins periodically (you can implement a scheduler or a background thread for this)
+@app.route('/api/sendPin', methods=['POST'])
+def send_pin():
+    # Generate a new PIN
+    pin = secrets.randbelow(10000)  # Generate a secure 4-digit PIN
+    logger.info(f"Generated PIN: {pin}")
+    return jsonify(pin=str(pin))  # Return the PIN as a JSON response
 
 if __name__ == '__main__':
     app.run(debug=True)
