@@ -152,23 +152,6 @@ def send_pin():
 
     return jsonify(success=True, message='PIN generated successfully', pin=pin)
 
-@app.route('/api/sendPin', methods=['POST'])
-def send_pin():
-    logger.info("Send PIN request received.")
-    data = request.get_json()
-    logger.debug(f"Received data: {data}")  # Log the incoming data
-    email = data.get('email')
-    pin = secrets.randbelow(10000)  # Generate a secure 4-digit PIN
-
-    if not email:
-        logger.error("Email is required.")
-        return jsonify(success=False, message='Email is required'), 400
-
-    # Store the PIN in memory with expiration
-    pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
-    logger.info(f"Generated PIN {pin} for {email}")
-
-    return jsonify(success=True, message='PIN sent successfully'), 200
 
 def expire_pins():
     logger.debug("Checking for expired PINs.")
