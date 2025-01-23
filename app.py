@@ -7,6 +7,7 @@ import logging
 import os
 import requests  # Import requests to send HTTP requests
 import time  # Import time for managing expiration
+import paho.mqtt.publish as publish  # Import MQTT publish
 
 # Suppress urllib3 debug logs
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -90,7 +91,7 @@ def login():
         conn.close()
 
         if user:
-            logger.info(f"User  {email} found in the database.")
+            logger.info(f"User   {email} found in the database.")
             otp = secrets.randbelow(1000000)  # Generate a secure 6-digit OTP
             otp_storage[email] = otp  # Store OTP in memory
             logger.debug(f"Generated OTP for {email}: {otp}")
@@ -173,18 +174,18 @@ def send_pin():
     pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
     logger.info(f"Generated PIN {pin} for {email}")
 
-    # Send the PIN to NodeMCU ESP32
-    esp32_url = "http://<ESP32_IP_ADDRESS>/receivePin"  # Replace with your ESP32's IP address
+    # Send the PIN to ESP32 via MQTT
     try:
-        response = requests.post(esp32_url, json={'email': email, 'pin': pin})
-        if response.status_code == 200:
-            logger.info(f"PIN {pin} sent to ESP32 successfully.")
-        else:
-            logger.error(f"Failed to send PIN to ESP32: {response.text}")
+        publish.single(
+            "pin_topic",  # MQTT topic
+            str(pin),     # PIN to send
+            hostname="broker.hivemq.com"  # MQTT broker
+        )
+        logger.info(f"PIN {pin} sent to ESP32 via MQTT.")
     except Exception as e:
         logger.error(f"Error sending PIN to ESP32: {str(e)}")
 
-    return jsonify(success=True, message='PIN received successfully')
+    return jsonify(success=True, message='PIN received successfully', pin=pin)
 
 def expire_pins():
     """Remove expired PINs from memory."""
