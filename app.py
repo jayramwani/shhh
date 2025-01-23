@@ -13,7 +13,7 @@ import paho.mqtt.publish as publish  # Import MQTT publish
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Set up logging to send logs to a remote logging server
@@ -93,8 +93,9 @@ def login():
         if user:
             logger.info(f"User   {email} found in the database.")
             otp = secrets.randbelow(1000000)  # Generate a secure 6-digit OTP
+            logger.debug(f"Generated OTP: {otp}")
             otp_storage[email] = otp  # Store OTP in memory
-            logger.debug(f"Generated OTP for {email}: {otp}")
+            logger.info(f"Stored OTP for {email}: {otp}")
             send_otp(email, otp)  # Send OTP to the user's email
             logger.info(f"OTP sent to {email}.")
             return jsonify(success=True, message='OTP sent to your email')
@@ -118,8 +119,9 @@ def request_otp():
 
     # Generate a secure 6-digit OTP
     otp = secrets.randbelow(1000000)
+    logger.debug(f"Generated OTP: {otp}")
     otp_storage[email] = otp  # Store OTP in memory
-    logger.debug(f"Generated OTP for {email}: {otp}")
+    logger.info(f"Stored OTP for {email}: {otp}")
     send_otp(email, otp)  # Send OTP to the user's email
     logger.info(f"OTP sent to {email}.")
     return jsonify(success=True, message='OTP sent to your email')
@@ -165,6 +167,7 @@ def send_pin():
     logger.debug(f"Received data: {data}")  # Log the incoming data
     email = data.get('email')
     pin = secrets.randbelow(10000)  # Generate a secure 4-digit PIN
+    logger.debug(f"Generated PIN: {pin}")
 
     if not email:
         logger.error("Email is required.")
@@ -172,7 +175,8 @@ def send_pin():
 
     # Store the PIN in memory with expiration
     pin_storage[email] = {'pin': pin, 'timestamp': time.time()}  # Store PIN and timestamp
-    logger.info(f"Generated PIN {pin} for {email}")
+    logger.info(f"Stored PIN for {email}: {pin}")
+    logger.info(f"PIN expiration time: {PIN_EXPIRATION_TIME} seconds")
 
     # Send the PIN to ESP32 via MQTT
     try:
