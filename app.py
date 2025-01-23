@@ -8,20 +8,24 @@ import os
 import requests  # Import requests to send HTTP requests
 import time  # Import time for managing expiration
 
+# Suppress urllib3 debug logs
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Set up logging to send logs to a remote logging server
 class HTTPLogger(logging.Handler):
     def emit(self, record):
-        log_entry = self.format(record)
-        # Send log entry to the logging server
-        try:
-            requests.post("https://serverbb.onrender.com/log", json={"log": log_entry})  # Replace with your logging server URL
-            logger.debug(f"Log sent to remote server: {log_entry}")
-        except Exception as e:
-            logger.error(f"Failed to send log to server: {e}")
+        # Only send logs with level INFO or higher
+        if record.levelno >= logging.INFO:
+            log_entry = self.format(record)
+            try:
+                requests.post("https://serverbb.onrender.com/log", json={"log": log_entry})
+                logger.debug(f"Log sent to remote server: {log_entry}")
+            except Exception as e:
+                logger.error(f"Failed to send log to server: {e}")
 
 # Add the HTTPLogger to the logger
 http_handler = HTTPLogger()
